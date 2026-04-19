@@ -8,8 +8,13 @@ git clone https://github.com/Ronnie-Ninja/WIFI_PASSWORDS_HACK/
 
 cd WIFI_PASSWORDS_HACK
 
+// termux
 
-g++ WIFI_PASSWORDS_HACK -o wifi5 -liw
+g++ termux.cpp -o wifi5
+
+// kali linux 
+
+g++ WIFI_PASSWORDS_HACK.cpp -o wifi5 -liw
 
 
 ./wifi5
