@@ -104,7 +104,7 @@ int main() {
         
       
         //usleep(10);
-       // usleep(500000); 
+        usleep(20000); 
     }
 
     if (!success) cout << RED << "\n[-] Wordlist khatam. Password nahi mila." << RESET << endl;
