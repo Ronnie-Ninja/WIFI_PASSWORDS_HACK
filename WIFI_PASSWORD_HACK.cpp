@@ -43,10 +43,10 @@ int main() {
     cout << YELLOW << "\n--- Available WiFi Networks ---" << RESET << endl;
     result = head.result;
     while (result != NULL) {
-        cout << "SSID: " << (result->b.has_essid ? result->b.essid : "Hidden") << endl;
+        cout << "SSID_WIFI_NAME: " << (result->b.has_essid ? result->b.essid : "Hidden") << endl;
         result = result->next;
     }
-
+    sleep(10);
     string target_ssid, wordlist_path;
     cout << CYAN << "\nTarget SSID_WIFI_NAME: " << RESET; getline(cin >> ws, target_ssid);
     cout << CYAN << "Wordlist Path: " << RESET; getline(cin >> ws, wordlist_path);
@@ -99,7 +99,7 @@ int main() {
             success = true;
             break; 
         } else {
-            cout << RED << " -> [FAILED]" << RESET << endl;
+            cout << RED << " >> [FAILED]" << RESET << endl;
         }
         
       
